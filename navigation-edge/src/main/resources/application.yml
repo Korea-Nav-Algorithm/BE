@@ -1,0 +1,17 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:sqlite:${TRIP_DB_PATH:data/navigation.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      connection-init-sql: PRAGMA busy_timeout=5000
+  sql:
+    init:
+      mode: always
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+navigation:
+  engine-base-url: ${NAV_ENGINE_BASE_URL:http://localhost:8090}

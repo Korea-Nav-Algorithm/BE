@@ -1,0 +1,21 @@
+services:
+  navigation-engine:
+    build:
+      context: ..
+      dockerfile: navigation-engine/Dockerfile
+    ports:
+      - "${ENGINE_BIND_ADDRESS:?Set Compute LAN/VPN bind address}:8090:8090"
+    volumes:
+      - ../data:/data:ro
+    environment:
+      GRAPH_SOURCE: ${GRAPH_SOURCE:-osm-pbf}
+      GRAPH_FILE: ${GRAPH_FILE:-/data/dev-graph.json}
+      OSM_PBF_FILE: ${OSM_PBF_FILE:-/data/osm/gyeonggi-latest.osm.pbf}
+      TRAFFIC_PROVIDER: ${TRAFFIC_PROVIDER:-json}
+      TRAFFIC_FILE: ${TRAFFIC_FILE:-/data/dev-traffic.json}
+      TRAFFIC_MAPPING_FILE: ${TRAFFIC_MAPPING_FILE:-/data/traffic-mapping.json}
+      GG_TRAFFIC_API_KEY: ${GG_TRAFFIC_API_KEY:-}
+      GG_TRAFFIC_URL: ${GG_TRAFFIC_URL:-https://openapigits.gg.go.kr/api/rest/getRoadTrafficInfoList}
+      MAX_PROPAGATION_DISTANCE_METERS: ${MAX_PROPAGATION_DISTANCE_METERS:-3000}
+      NAVIGATION_ALGORITHM_VERSION: ${NAVIGATION_ALGORITHM_VERSION:-navigation-mvp-20261004-01}
+    restart: unless-stopped

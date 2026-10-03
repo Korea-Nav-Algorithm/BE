@@ -1,0 +1,12 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+dependencies {
+    implementation project(':navigation-common')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+tasks.named('bootRun') { workingDir = rootProject.projectDir }

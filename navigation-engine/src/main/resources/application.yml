@@ -1,0 +1,25 @@
+server:
+  port: 8090
+spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      max-request-size: 1MB
+  mvc:
+    problemdetails:
+      enabled: false
+graph:
+  source: ${GRAPH_SOURCE:json}
+  file: ${GRAPH_FILE:data/dev-graph.json}
+  osm-file: ${OSM_PBF_FILE:data/test-region.osm.pbf}
+traffic:
+  provider: ${TRAFFIC_PROVIDER:json}
+  file: ${TRAFFIC_FILE:data/dev-traffic.json}
+  gyeonggi-url: ${GG_TRAFFIC_URL:}
+  gyeonggi-key: ${GG_TRAFFIC_API_KEY:}
+  mapping-file: ${TRAFFIC_MAPPING_FILE:data/traffic-mapping.json}
+routing:
+  max-propagation-distance-meters: ${MAX_PROPAGATION_DISTANCE_METERS:3000}
+  algorithm-version: ${NAVIGATION_ALGORITHM_VERSION:navigation-mvp-20261004-01}

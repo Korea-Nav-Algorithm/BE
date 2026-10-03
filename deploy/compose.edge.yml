@@ -1,0 +1,13 @@
+services:
+  navigation-edge:
+    build:
+      context: ..
+      dockerfile: navigation-edge/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ../data:/data
+    environment:
+      NAV_ENGINE_BASE_URL: ${NAV_ENGINE_BASE_URL:?Set Engine LAN/VPN URL}
+      TRIP_DB_PATH: ${TRIP_DB_PATH:-/data/navigation.db}
+    restart: unless-stopped

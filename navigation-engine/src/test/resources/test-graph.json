@@ -1,0 +1,17 @@
+{
+  "nodes":[
+    {"id":1,"lat":37.0,"lng":127.0},
+    {"id":2,"lat":37.001,"lng":127.0},
+    {"id":3,"lat":37.002,"lng":127.0},
+    {"id":4,"lat":37.003,"lng":127.0},
+    {"id":5,"lat":37.004,"lng":126.999},
+    {"id":6,"lat":37.004,"lng":127.001}
+  ],
+  "edges":[
+    {"id":"A","from":1,"to":2,"distanceMeters":120,"baseSpeedKmh":60,"oneWay":true,"roadName":"A","roadClass":"PRIMARY","geometry":[{"lat":37.0,"lng":127.0},{"lat":37.001,"lng":127.0}]},
+    {"id":"B","from":2,"to":3,"distanceMeters":120,"baseSpeedKmh":60,"oneWay":true,"roadName":"B","roadClass":"PRIMARY","geometry":[{"lat":37.001,"lng":127.0},{"lat":37.002,"lng":127.0}]},
+    {"id":"C","from":3,"to":4,"distanceMeters":120,"baseSpeedKmh":60,"oneWay":true,"roadName":"C","roadClass":"PRIMARY","geometry":[{"lat":37.002,"lng":127.0},{"lat":37.003,"lng":127.0}]},
+    {"id":"Y","from":4,"to":5,"distanceMeters":150,"baseSpeedKmh":50,"oneWay":true,"roadName":"YANGJAE","roadClass":"PRIMARY","geometry":[{"lat":37.003,"lng":127.0},{"lat":37.004,"lng":126.999}]},
+    {"id":"S","from":4,"to":6,"distanceMeters":150,"baseSpeedKmh":50,"oneWay":true,"roadName":"SADANG","roadClass":"PRIMARY","geometry":[{"lat":37.003,"lng":127.0},{"lat":37.004,"lng":127.001}]}
+  ]
+}

@@ -1,0 +1,7 @@
+.git
+.gradle
+**/build
+.env
+data/*.db
+data/*.db-*
+data/*.osm.pbf

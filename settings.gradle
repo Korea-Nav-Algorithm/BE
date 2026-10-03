@@ -1,0 +1,2 @@
+rootProject.name = 'k-nav-backend'
+include 'navigation-common', 'navigation-edge', 'navigation-engine'

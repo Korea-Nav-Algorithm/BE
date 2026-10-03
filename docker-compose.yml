@@ -1,0 +1,36 @@
+services:
+  navigation-engine:
+    build:
+      context: .
+      dockerfile: navigation-engine/Dockerfile
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ./data:/data:ro
+    environment:
+      GRAPH_SOURCE: ${GRAPH_SOURCE:-json}
+      GRAPH_FILE: ${GRAPH_FILE:-/data/dev-graph.json}
+      OSM_PBF_FILE: ${OSM_PBF_FILE:-/data/osm/gyeonggi-latest.osm.pbf}
+      TRAFFIC_PROVIDER: ${TRAFFIC_PROVIDER:-json}
+      TRAFFIC_FILE: ${TRAFFIC_FILE:-/data/dev-traffic.json}
+      TRAFFIC_MAPPING_FILE: ${TRAFFIC_MAPPING_FILE:-/data/traffic-mapping.json}
+      GG_TRAFFIC_API_KEY: ${GG_TRAFFIC_API_KEY:-}
+      GG_TRAFFIC_URL: ${GG_TRAFFIC_URL:-https://openapigits.gg.go.kr/api/rest/getRoadTrafficInfoList}
+      MAX_PROPAGATION_DISTANCE_METERS: ${MAX_PROPAGATION_DISTANCE_METERS:-3000}
+      NAVIGATION_ALGORITHM_VERSION: ${NAVIGATION_ALGORITHM_VERSION:-navigation-mvp-20261004-01}
+    restart: unless-stopped
+  navigation-edge:
+    build:
+      context: .
+      dockerfile: navigation-edge/Dockerfile
+    depends_on:
+      navigation-engine:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      NAV_ENGINE_BASE_URL: ${NAV_ENGINE_BASE_URL:-http://navigation-engine:8090}
+      TRIP_DB_PATH: ${TRIP_DB_PATH:-/data/navigation.db}
+    restart: unless-stopped

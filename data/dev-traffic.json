@@ -1,0 +1,7 @@
+{"edges":[
+  {"edgeId":"A","observedSpeedKmh":25,"timestamp":0},
+  {"edgeId":"B","observedSpeedKmh":20,"timestamp":0},
+  {"edgeId":"C","observedSpeedKmh":18,"timestamp":0},
+  {"edgeId":"Y","observedSpeedKmh":5,"timestamp":0},
+  {"edgeId":"S","observedSpeedKmh":48,"timestamp":0}
+]}
