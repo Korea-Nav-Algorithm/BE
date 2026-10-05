@@ -32,10 +32,12 @@ class SqliteMigrationTest {
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM gps_point WHERE trip_id='old'", Integer.class));
         assertEquals(null, jdbc.queryForObject("SELECT client_trip_id FROM trip WHERE id='old'", String.class));
         assertEquals(null, jdbc.queryForObject("SELECT point_id FROM gps_point WHERE trip_id='old'", String.class));
+        jdbc.update("INSERT INTO trip_route(trip_id,route_id,occurred_at) VALUES('old','later-route',120)");
         jdbc.update("INSERT INTO gps_point(trip_id,point_id,timestamp,lat,lng) VALUES('old','point-1',101,37,127)");
         jdbc.update("INSERT OR IGNORE INTO gps_point(trip_id,point_id,timestamp,lat,lng) "
                 + "VALUES('old','point-1',102,37,127)");
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM gps_point WHERE trip_id='old'", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM trip_route WHERE trip_id='old'", Integer.class));
         new SqliteMigration().migrateNavigationDatabase(jdbc, new DataSourceTransactionManager(dataSource)).run(null);
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM gps_point WHERE trip_id='old'", Integer.class));
     }

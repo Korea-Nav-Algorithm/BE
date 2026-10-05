@@ -24,5 +24,6 @@ public class JsonTrafficProvider implements TrafficProvider {
             return new TrafficSnapshot(states, System.currentTimeMillis());
         } catch (IOException exception) { throw new IllegalStateException("Cannot load traffic JSON: " + file, exception); }
     }
+    @Override public String source() { return "JSON"; }
     private record TrafficFile(List<TrafficState> edges) {}
 }

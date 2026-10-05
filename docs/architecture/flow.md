@@ -18,4 +18,4 @@
 
 ## 선택적 경기 교통
 
-`TRAFFIC_PROVIDER=json`은 파일을 읽는다. `gyeonggi`는 `linkId`를 수동 매핑한 방향별 edge에만 적용하고 성공 snapshot을 60초 캐시한다. 응답 실패는 마지막 정상 snapshot/기본 속도로 처리한다. provider는 직접 재시도하지 않고 다음 경로 요청에서 다시 시도한다. 키는 로그·응답에 넣지 않는다.
+`TRAFFIC_PROVIDER=json`은 개발용 파일을 읽는다. `gyeonggi`는 지역 표준 link 도형과 진행 방향으로 `linkId`를 OSM edge에 매핑하고, 수동 매핑을 우선 적용한다. Engine 준비 후 별도 스레드가 첫 snapshot을 요청하며 이후 최소 60초 간격으로 갱신한다. 유효한 관측 속도가 있는 edge는 그 속도로 비용을 계산한다. 갱신 실패 시 마지막 정상 snapshot을 최대 5분 사용하고, 그 뒤에는 관측 없음으로 처리한다. 개별 경로에서 관측 edge가 없으면 `trafficSource=UNKNOWN`이다. 키는 로그·응답에 넣지 않는다.

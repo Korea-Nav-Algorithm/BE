@@ -16,11 +16,12 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 @Component
 public class EngineClient {
     private final RestClient restClient;
-    public EngineClient(@Value("${navigation.engine-base-url}") String baseUrl) {
+    public EngineClient(@Value("${navigation.engine-base-url}") String baseUrl,
+                        @Value("${navigation.engine-read-timeout-seconds:9}") int readTimeoutSeconds) {
         java.net.http.HttpClient http = java.net.http.HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2)).build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http);
-        factory.setReadTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
         this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
     }
     public RouteResponse route(RouteRequest request) {

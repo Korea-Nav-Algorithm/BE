@@ -2,6 +2,7 @@
 .gradle
 **/build
 .env
+data/
 data/*.db
 data/*.db-*
 data/*.osm.pbf

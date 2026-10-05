@@ -14,12 +14,16 @@ graph:
   source: ${GRAPH_SOURCE:json}
   file: ${GRAPH_FILE:data/dev-graph.json}
   osm-file: ${OSM_PBF_FILE:data/test-region.osm.pbf}
+  bounds: ${OSM_BBOX:}
 traffic:
   provider: ${TRAFFIC_PROVIDER:json}
   file: ${TRAFFIC_FILE:data/dev-traffic.json}
   gyeonggi-url: ${GG_TRAFFIC_URL:}
   gyeonggi-key: ${GG_TRAFFIC_API_KEY:}
   mapping-file: ${TRAFFIC_MAPPING_FILE:data/traffic-mapping.json}
+  link-geometry-file: ${TRAFFIC_LINK_GEOMETRY_FILE:}
+  gyeonggi-route-ids: ${GG_TRAFFIC_ROUTE_IDS:}
 routing:
+  unobserved-speed-factor: ${ETA_UNOBSERVED_SPEED_FACTOR:0.75}
   max-propagation-distance-meters: ${MAX_PROPAGATION_DISTANCE_METERS:3000}
-  algorithm-version: ${NAVIGATION_ALGORITHM_VERSION:navigation-mvp-20261004-01}
+  algorithm-version: ${NAVIGATION_ALGORITHM_VERSION:navigation-traffic-20261005-01}

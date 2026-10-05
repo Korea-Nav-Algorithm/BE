@@ -1,6 +1,8 @@
 package kr.knav.engine.graph;
 
 import de.topobyte.osm4j.core.model.iface.OsmNode;
+import de.topobyte.osm4j.core.model.iface.OsmRelation;
+import de.topobyte.osm4j.core.model.iface.OsmRelationMember;
 import de.topobyte.osm4j.core.model.iface.OsmWay;
 import de.topobyte.osm4j.core.model.iface.EntityType;
 import de.topobyte.osm4j.core.model.util.OsmModelUtil;
@@ -22,24 +24,57 @@ import org.springframework.stereotype.Component;
 @Component
 public class OsmPbfRoadGraphLoader implements RoadGraphLoader {
     private final String file;
-    public OsmPbfRoadGraphLoader(@Value("${graph.osm-file}") String file) { this.file = file; }
+    private final Bounds bounds;
+    public OsmPbfRoadGraphLoader(@Value("${graph.osm-file}") String file,
+                                 @Value("${graph.bounds:}") String bounds) {
+        this.file = file;
+        this.bounds = Bounds.parse(bounds);
+    }
     @Override public RoadGraph load() {
         Map<Long, RoadNode> nodes = new HashMap<>();
         List<RoadEdge> edges = new ArrayList<>();
+        List<TurnRestriction> restrictions = new ArrayList<>();
         try (InputStream input = new BufferedInputStream(new FileInputStream(file))) {
             PbfIterator iterator = new PbfIterator(input, false);
             for (var container : iterator) {
                 if (container.getType() == EntityType.Node) {
                     OsmNode node = (OsmNode) container.getEntity();
-                    nodes.put(node.getId(), new RoadNode(node.getId(), node.getLatitude(), node.getLongitude()));
+                    if (bounds.contains(node.getLatitude(), node.getLongitude()))
+                        nodes.put(node.getId(), new RoadNode(node.getId(), node.getLatitude(), node.getLongitude()));
                 } else if (container.getType() == EntityType.Way) {
                     addWay((OsmWay) container.getEntity(), nodes, edges);
+                } else if (container.getType() == EntityType.Relation) {
+                    TurnRestriction restriction = parseTurnRestriction((OsmRelation) container.getEntity());
+                    if (restriction != null) restrictions.add(restriction);
                 }
             }
         } catch (IOException exception) { throw new IllegalStateException("Cannot load OSM PBF: " + file, exception); }
         Map<Long, RoadNode> used = new HashMap<>();
         for (RoadEdge edge : edges) { used.put(edge.from(), nodes.get(edge.from())); used.put(edge.to(), nodes.get(edge.to())); }
-        return new RoadGraph(new ArrayList<>(used.values()), edges);
+        return new RoadGraph(new ArrayList<>(used.values()), edges, restrictions);
+    }
+    static TurnRestriction parseTurnRestriction(OsmRelation relation) {
+        Map<String, String> tags = OsmModelUtil.getTagsAsMap(relation);
+        if (!"restriction".equals(tags.get("type"))) return null;
+        String rule = tags.getOrDefault("restriction:motorcar",
+                tags.getOrDefault("restriction:motor_vehicle", tags.get("restriction")));
+        if (rule == null || !(rule.startsWith("no_") || rule.startsWith("only_"))) return null;
+        String exceptions = tags.getOrDefault("except", "");
+        for (String exception : exceptions.split("[;,]")) {
+            if (List.of("motorcar", "motor_vehicle", "vehicle").contains(exception.trim())) return null;
+        }
+        long from = -1, via = -1, to = -1;
+        for (int index = 0; index < relation.getNumberOfMembers(); index++) {
+            OsmRelationMember member = relation.getMember(index);
+            switch (member.getRole() == null ? "" : member.getRole()) {
+                case "from" -> { if (member.getType() != EntityType.Way || from >= 0) return null; from = member.getId(); }
+                case "via" -> { if (member.getType() != EntityType.Node || via >= 0) return null; via = member.getId(); }
+                case "to" -> { if (member.getType() != EntityType.Way || to >= 0) return null; to = member.getId(); }
+                default -> { }
+            }
+        }
+        if (from < 0 || via < 0 || to < 0) return null;
+        return new TurnRestriction(from, via, to, rule.startsWith("only_"), rule.endsWith("u_turn"));
     }
     private void addWay(OsmWay way, Map<Long, RoadNode> nodes, List<RoadEdge> edges) {
         Map<String, String> tags = OsmModelUtil.getTagsAsMap(way);
@@ -107,5 +142,27 @@ public class OsmPbfRoadGraphLoader implements RoadGraphLoader {
             case TERTIARY -> 40;
             default -> 30;
         };
+    }
+
+    /** Bounds reduce memory when using a country PBF; roads ending outside are intentionally cut. */
+    record Bounds(double minLng, double minLat, double maxLng, double maxLat) {
+        static Bounds parse(String value) {
+            if (value == null || value.isBlank()) return new Bounds(-180, -90, 180, 90);
+            String[] parts = value.split(",");
+            if (parts.length != 4) throw new IllegalArgumentException("OSM_BBOX needs minLng,minLat,maxLng,maxLat");
+            try {
+                Bounds bounds = new Bounds(Double.parseDouble(parts[0].trim()), Double.parseDouble(parts[1].trim()),
+                        Double.parseDouble(parts[2].trim()), Double.parseDouble(parts[3].trim()));
+                if (!Double.isFinite(bounds.minLng) || !Double.isFinite(bounds.minLat)
+                        || !Double.isFinite(bounds.maxLng) || !Double.isFinite(bounds.maxLat)
+                        || bounds.minLng < -180 || bounds.maxLng > 180 || bounds.minLat < -90 || bounds.maxLat > 90
+                        || bounds.minLng >= bounds.maxLng || bounds.minLat >= bounds.maxLat)
+                    throw new IllegalArgumentException("Invalid OSM_BBOX");
+                return bounds;
+            } catch (NumberFormatException exception) { throw new IllegalArgumentException("Invalid OSM_BBOX", exception); }
+        }
+        boolean contains(double lat, double lng) {
+            return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+        }
     }
 }

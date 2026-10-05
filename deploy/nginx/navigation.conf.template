@@ -1,5 +1,8 @@
 # Render on Raspberry Pi after setting NAV_PUBLIC_HOST, FRONTEND_DIST,
 # TLS_CERT_FILE and TLS_KEY_FILE. Engine port 8090 is never proxied here.
+# Install this file under nginx's http context (for example sites-enabled).
+limit_req_zone $binary_remote_addr zone=navigation_api_per_ip:10m rate=10r/s;
+
 server {
     listen 80;
     server_name ${NAV_PUBLIC_HOST};
@@ -14,8 +17,10 @@ server {
     root ${FRONTEND_DIST};
     index index.html;
     client_max_body_size 256k;
+    limit_req_status 429;
 
     location /api/ {
+        limit_req zone=navigation_api_per_ip burst=20 nodelay;
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

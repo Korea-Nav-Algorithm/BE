@@ -1,4 +1,4 @@
-FROM gradle:8.14.3-jdk21 AS build
+FROM --platform=$BUILDPLATFORM gradle:8.14.3-jdk21 AS build
 WORKDIR /workspace
 COPY settings.gradle build.gradle ./
 COPY navigation-common navigation-common

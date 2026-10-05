@@ -4,12 +4,13 @@ Edge의 `TRIP_DB_PATH` 파일은 route snapshot과 실차 로그를 보존한다
 
 ## trip
 
-Owner: `navigation-edge/trips`. Trip 시작 metadata, 수동 TMAP benchmark와 종료 결과. Primary key `id`, 별도 `UNIQUE(client_trip_id)`는 재전송 키다. 이전 DB의 기존 row는 `client_trip_id=NULL`이며 신규 API로 만든 row는 필수 UUID다. `trip_created_at_idx(created_at DESC)`로 최근 50건을 조회한다.
+Owner: `navigation-edge/trips`. Trip 시작 metadata, 수동 TMAP benchmark와 종료 결과. Primary key `id`, 별도 `UNIQUE(client_trip_id)`는 재전송 키다. 이전 DB의 기존 row는 `client_trip_id`와 `access_key_hash`가 NULL일 수 있으며 신규 API로 만든 row는 둘 다 필수다. Key가 없는 이전 row는 공개 API에서 접근할 수 없고 운영자가 DB에서 확인한다. `trip_created_at_idx(created_at DESC)`로 운영자 전용 최근 50건을 조회한다.
 
 | Column | Type | Required new row | Default | Index/unique | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | id | TEXT | Y | none | PK | 서버 Trip UUID |
 | client_trip_id | TEXT | Y | none; legacy NULL | unique | Frontend UUID 재전송 키 |
+| access_key_hash | TEXT | Y | none; legacy NULL | no | 기기 생성 256비트 비밀키의 SHA-256 hex; 원본 key 저장 금지 |
 | route_id | TEXT | Y | none | no | OUR route ID; FK 아님 |
 | started_at | INTEGER | Y | none | no | Unix epoch milliseconds |
 | finished_at | INTEGER | N | NULL | no | 종료 시각 milliseconds |
@@ -39,6 +40,16 @@ Owner: `navigation-edge/trips`. GPS raw point 보존. Primary key `id`, FK `trip
 | heading | REAL | N | NULL | no | 도 [0,360] |
 | accuracy | REAL | N | NULL | no | m |
 
+## trip_route
+
+Owner: `navigation-edge/trips`. Trip 생성 시의 원래 경로는 `trip.route_id`에 남고, 주행 중 재탐색 경로는 이 테이블에 누적한다. `(trip_id,route_id)` 기본키로 같은 재전송을 한 번만 보존한다. `occurred_at`은 최초 전송된 Unix epoch milliseconds이며 이후 같은 route ID 재시도로 변경되지 않는다.
+
+| Column | Type | Required | Index/unique | Meaning |
+| --- | --- | --- | --- | --- |
+| trip_id | TEXT | Y | PK, FK `trip.id` | 주행 |
+| route_id | TEXT | Y | PK | 재탐색 route ID |
+| occurred_at | INTEGER | Y | `(trip_id,occurred_at)` index | 재탐색 시각 |
+
 ## route_snapshot
 
 Owner: `navigation-edge/routes`. 성공한 OUR route의 JSON 응답을 재조회한다. TMAP API 응답은 없다. Primary key `route_id`. `algorithm`은 `BASELINE`/`DIRECTION_AWARE` 중 하나다. 기존 route snapshot의 신규 열은 NULL이지만 기존 `response_json`은 보존한다.
@@ -52,7 +63,7 @@ Owner: `navigation-edge/routes`. 성공한 OUR route의 JSON 응답을 재조회
 | origin_lng | REAL | Y | none; legacy NULL | no | 요청 출발 경도 |
 | destination_lat | REAL | Y | none; legacy NULL | no | 요청 목적지 위도 |
 | destination_lng | REAL | Y | none; legacy NULL | no | 요청 목적지 경도 |
-| response_json | TEXT | Y | none | no | geometry·ETA·segments 포함 전체 응답 |
+| response_json | TEXT | Y | none | no | geometry·ETA·segments·instructions 포함 전체 응답 |
 | created_at | INTEGER | Y | none | no | 서버 생성 시각 milliseconds |
 
 Migration은 old `gps_point`의 `(trip_id,timestamp)` 제약을 제거해야 하므로 기존 행의 ID와 값을 새 table로 복사한다. 완료 뒤 `(trip_id,point_id)` 고유 index가 존재한다. Migration 자체는 재실행 가능하게 작성되어 있으며 이전 데이터와 같은 timestamp의 새 point가 공존한다. 향후 열 타입 변경이 필요하면 별도 migration을 작성해야 한다.

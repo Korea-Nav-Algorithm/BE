@@ -23,8 +23,8 @@ public class GraphConfiguration {
             throw new IllegalStateException("Road graph has no routable nodes or edges");
         String fileName = source.equals("osm-pbf") ? Path.of(osmFile).getFileName().toString() : "json";
         long usedMemoryMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1_048_576;
-        log.info("event=graph_loaded source={} file={} nodesLoaded={} directedEdges={} buildMs={} usedMemoryMb={}",
-                source, fileName, graph.nodeCount(), graph.edgeCount(),
+        log.info("event=graph_loaded source={} file={} nodesLoaded={} directedEdges={} turnRestrictions={} buildMs={} usedMemoryMb={}",
+                source, fileName, graph.nodeCount(), graph.edgeCount(), graph.turnRestrictionCount(),
                 (System.nanoTime() - started) / 1_000_000, usedMemoryMb);
         return graph;
     }

@@ -30,7 +30,7 @@ foreach ($leg in $legs) {
             throw "Invalid route for $($leg.name) / $algorithm"
         }
         if ($timer.ElapsedMilliseconds -gt $MaxElapsedMs) {
-            throw "Route exceeded $MaxElapsedMs ms for $($leg.name) / $algorithm: $($timer.ElapsedMilliseconds) ms"
+            throw "Route exceeded $MaxElapsedMs ms for $($leg.name) / ${algorithm}: $($timer.ElapsedMilliseconds) ms"
         }
         [pscustomobject]@{
             leg = $leg.name

@@ -9,6 +9,7 @@ import kr.knav.common.Coordinate;
 import kr.knav.common.RouteRequest;
 import kr.knav.common.RouteResponse;
 import kr.knav.common.RouteSegment;
+import kr.knav.common.TrafficLevel;
 import kr.knav.engine.graph.RoadEdge;
 import kr.knav.engine.graph.RoadGraph;
 import kr.knav.engine.graph.RoadNode;
@@ -36,8 +37,9 @@ public class RouteService {
     }
     public RouteResponse calculate(RouteRequest request) {
         long started = System.nanoTime();
-        RoadNode origin = graph.findNearestNode(request.origin());
-        RoadNode destination = graph.findNearestNode(request.destination());
+        RoadNode origin = graph.findNearestNodeWithin(request.origin(), 1000);
+        RoadNode destination = graph.findNearestNodeWithin(request.destination(), 1000);
+        if (origin == null || destination == null) throw new RouteNotFoundException();
         double originSnapMeters = Geo.meters(request.origin(), new Coordinate(origin.lat(), origin.lng()));
         double destinationSnapMeters = Geo.meters(request.destination(), new Coordinate(destination.lat(), destination.lng()));
         log.info("event=route_snap originNode={} destinationNode={} originSnapMeters={} destinationSnapMeters={}",
@@ -50,15 +52,19 @@ public class RouteService {
                 trafficProvider.getClass().getSimpleName(), traffic.timestamp(), traffic.edges().size());
         Map<String, Double> attribution = request.algorithm() == Algorithm.DIRECTION_AWARE
                 ? reverseSearch.attribute(graph, destination.id(), traffic) : Map.of();
-        double defaultAttribution = request.algorithm() == Algorithm.BASELINE ? 1.0 : 0.0;
+        // Only edges explicitly attributed by the reverse search may discount observed delay.
+        // An edge outside its propagation window must retain its measured travel time.
+        double defaultAttribution = 1.0;
         long attributionEnd = System.nanoTime();
         List<RoadEdge> edges = router.route(graph, origin.id(), destination.id(), traffic, attribution, defaultAttribution);
         long routingEnd = System.nanoTime();
         RouteResponse response = response(edges, traffic, attribution, defaultAttribution, origin, request.algorithm());
-        log.info("event=route routeId={} algorithm={} algorithmVersion={} origin={},{} destination={},{} distance={} duration={} segments={} "
+        log.info("event=route routeId={} algorithm={} algorithmVersion={} origin={},{} destination={},{} distance={} duration={} segments={} observedSegments={} trafficSource={} "
                         + "graphLookupMs={} attributionMs={} routingTimeMs={} totalMs={}", response.routeId(),
                 request.algorithm(), algorithmVersion, request.origin().lat(), request.origin().lng(), request.destination().lat(),
                 request.destination().lng(), response.distanceMeters(), response.durationSeconds(), response.segments().size(),
+                response.segments().stream().filter(segment -> segment.trafficLevel() != TrafficLevel.UNKNOWN).count(),
+                response.trafficSource(),
                 millis(lookupEnd - started), millis(attributionEnd - lookupEnd), millis(routingEnd - attributionEnd),
                 millis(System.nanoTime() - started));
         return response;
@@ -70,21 +76,36 @@ public class RouteService {
         double duration = 0;
         List<Coordinate> geometry = new ArrayList<>();
         List<RouteSegment> segments = new ArrayList<>();
+        List<Integer> edgeStartIndices = new ArrayList<>();
         if (edges.isEmpty()) geometry.add(new Coordinate(origin.lat(), origin.lng()));
         for (RoadEdge edge : edges) {
-            EdgeCost cost = EdgeCost.calculate(edge, traffic,
+            int startIndex = geometry.isEmpty() ? 0 : geometry.getLast().equals(edge.geometry().getFirst())
+                    ? geometry.size() - 1 : geometry.size();
+            edgeStartIndices.add(startIndex);
+            EdgeCost cost = router.cost(edge, traffic,
                     attribution.getOrDefault(edge.id(), defaultAttribution));
             distance += edge.distanceMeters();
             duration += cost.effectiveSeconds();
             double effectiveSpeed = edge.distanceMeters() * 3.6 / cost.effectiveSeconds();
-            segments.add(new RouteSegment(edge.id(), cost.observedSpeedKmh(), edge.baseSpeedKmh(),
-                    cost.attribution(), effectiveSpeed));
             for (Coordinate coordinate : edge.geometry()) {
                 if (geometry.isEmpty() || !geometry.getLast().equals(coordinate)) geometry.add(coordinate);
             }
+            segments.add(new RouteSegment(edge.id(), cost.observedSpeedKmh(), edge.baseSpeedKmh(),
+                    cost.attribution(), effectiveSpeed, trafficLevel(edge, traffic),
+                    startIndex, geometry.size() - 1));
         }
+        String trafficSource = segments.stream().anyMatch(segment -> segment.trafficLevel() != TrafficLevel.UNKNOWN)
+                ? trafficProvider.source() : "UNKNOWN";
         return new RouteResponse(UUID.randomUUID().toString(), algorithm, algorithmVersion,
-                Math.round(distance), Math.round(duration), geometry, segments);
+                Math.round(distance), Math.round(duration), geometry, segments,
+                ManeuverBuilder.build(edges, edgeStartIndices, geometry), trafficSource);
+    }
+    private TrafficLevel trafficLevel(RoadEdge edge, TrafficSnapshot traffic) {
+        if (!traffic.hasObservedSpeed(edge.id())) return TrafficLevel.UNKNOWN;
+        double ratio = traffic.speedOrBase(edge.id(), edge.baseSpeedKmh()) / edge.baseSpeedKmh();
+        if (ratio <= 0.4) return TrafficLevel.CONGESTED;
+        if (ratio <= 0.7) return TrafficLevel.SLOW;
+        return TrafficLevel.FREE;
     }
     private long millis(long nanos) { return nanos / 1_000_000; }
 }

@@ -15,6 +15,8 @@ public class SqliteMigration {
         return args -> new TransactionTemplate(manager).executeWithoutResult(status -> {
             if (!columns(jdbc, "trip").contains("client_trip_id"))
                 jdbc.execute("ALTER TABLE trip ADD COLUMN client_trip_id TEXT");
+            if (!columns(jdbc, "trip").contains("access_key_hash"))
+                jdbc.execute("ALTER TABLE trip ADD COLUMN access_key_hash TEXT");
             jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS trip_client_trip_id_idx ON trip(client_trip_id)");
             if (!columns(jdbc, "trip").contains("tmap_distance_meters"))
                 jdbc.execute("ALTER TABLE trip ADD COLUMN tmap_distance_meters INTEGER");
@@ -35,6 +37,9 @@ public class SqliteMigration {
             if (!columns(jdbc, "gps_point").contains("point_id"))
                 jdbc.execute("ALTER TABLE gps_point ADD COLUMN point_id TEXT");
             jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS gps_point_trip_point_idx ON gps_point(trip_id,point_id)");
+            jdbc.execute("CREATE TABLE IF NOT EXISTS trip_route (trip_id TEXT NOT NULL REFERENCES trip(id), "
+                    + "route_id TEXT NOT NULL, occurred_at INTEGER NOT NULL, PRIMARY KEY(trip_id,route_id))");
+            jdbc.execute("CREATE INDEX IF NOT EXISTS trip_route_time_idx ON trip_route(trip_id,occurred_at)");
 
             if (!columns(jdbc, "route_snapshot").contains("algorithm_version"))
                 jdbc.execute("ALTER TABLE route_snapshot ADD COLUMN algorithm_version TEXT");

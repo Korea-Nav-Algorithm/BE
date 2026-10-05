@@ -3,6 +3,7 @@ PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS trip (
     id TEXT PRIMARY KEY,
     client_trip_id TEXT UNIQUE NOT NULL,
+    access_key_hash TEXT NOT NULL,
     route_id TEXT NOT NULL,
     started_at INTEGER NOT NULL,
     finished_at INTEGER,
@@ -30,6 +31,13 @@ CREATE TABLE IF NOT EXISTS gps_point (
     UNIQUE(trip_id, point_id)
 );
 CREATE INDEX IF NOT EXISTS gps_point_trip_idx ON gps_point(trip_id, timestamp);
+CREATE TABLE IF NOT EXISTS trip_route (
+    trip_id TEXT NOT NULL REFERENCES trip(id),
+    route_id TEXT NOT NULL,
+    occurred_at INTEGER NOT NULL,
+    PRIMARY KEY (trip_id, route_id)
+);
+CREATE INDEX IF NOT EXISTS trip_route_time_idx ON trip_route(trip_id, occurred_at);
 CREATE TABLE IF NOT EXISTS route_snapshot (
     route_id TEXT PRIMARY KEY,
     algorithm TEXT NOT NULL,

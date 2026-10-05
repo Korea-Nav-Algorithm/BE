@@ -7,6 +7,7 @@ import java.util.Optional;
 import kr.knav.common.Coordinate;
 import kr.knav.edge.trips.dto.GpsPointRequest;
 import kr.knav.edge.trips.dto.StartTripRequest;
+import kr.knav.edge.trips.dto.TripReroute;
 import kr.knav.edge.trips.entity.TripRecord;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -16,10 +17,10 @@ import org.springframework.stereotype.Repository;
 public class TripRepository {
     private final JdbcTemplate jdbc;
     public TripRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
-    public void create(String id, StartTripRequest request) {
-        jdbc.update("INSERT INTO trip(id,client_trip_id,route_id,started_at,origin_lat,origin_lng,destination_lat,destination_lng,"
-                        + "our_eta_seconds,tmap_eta_seconds,tmap_distance_meters,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                id, request.clientTripId(), request.routeId(), request.startedAt(), request.origin().lat(), request.origin().lng(),
+    public void create(String id, StartTripRequest request, String accessKeyHash) {
+        jdbc.update("INSERT INTO trip(id,client_trip_id,access_key_hash,route_id,started_at,origin_lat,origin_lng,destination_lat,destination_lng,"
+                        + "our_eta_seconds,tmap_eta_seconds,tmap_distance_meters,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                id, request.clientTripId(), accessKeyHash, request.routeId(), request.startedAt(), request.origin().lat(), request.origin().lng(),
                 request.destination().lat(), request.destination().lng(), request.ourEtaSeconds(),
                 request.tmapEtaSeconds(), request.tmapDistanceMeters(), System.currentTimeMillis());
     }
@@ -35,6 +36,14 @@ public class TripRepository {
         return jdbc.update("INSERT OR IGNORE INTO gps_point(trip_id,point_id,timestamp,lat,lng,gps_speed,heading,accuracy) "
                         + "VALUES(?,?,?,?,?,?,?,?)", tripId, point.pointId(), point.timestamp(), point.lat(), point.lng(),
                 point.gpsSpeed(), point.heading(), point.accuracy());
+    }
+    public int insertReroute(String tripId, String routeId, long occurredAt) {
+        return jdbc.update("INSERT OR IGNORE INTO trip_route(trip_id,route_id,occurred_at) VALUES(?,?,?)",
+                tripId, routeId, occurredAt);
+    }
+    public List<TripReroute> reroutes(String tripId) {
+        return jdbc.query("SELECT route_id,occurred_at FROM trip_route WHERE trip_id=? ORDER BY occurred_at,route_id",
+                (result, row) -> new TripReroute(result.getString("route_id"), result.getLong("occurred_at")), tripId);
     }
     public void finish(String id, long finishedAt, long actualDurationSeconds) {
         jdbc.update("UPDATE trip SET finished_at=?,actual_duration_seconds=? WHERE id=? AND finished_at IS NULL",
@@ -55,7 +64,8 @@ public class TripRepository {
                         nullableDouble(result, "accuracy")), tripId);
     }
     private TripRecord map(ResultSet result) throws SQLException {
-        return new TripRecord(result.getString("id"), result.getString("client_trip_id"), result.getString("route_id"), result.getLong("started_at"),
+        return new TripRecord(result.getString("id"), result.getString("client_trip_id"),
+                result.getString("access_key_hash"), result.getString("route_id"), result.getLong("started_at"),
                 nullableLong(result, "finished_at"),
                 new Coordinate(result.getDouble("origin_lat"), result.getDouble("origin_lng")),
                 new Coordinate(result.getDouble("destination_lat"), result.getDouble("destination_lng")),

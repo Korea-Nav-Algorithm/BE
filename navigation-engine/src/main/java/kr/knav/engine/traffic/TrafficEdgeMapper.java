@@ -1,5 +1,6 @@
 package kr.knav.engine.traffic;
 
-import java.util.Optional;
+import java.util.List;
 
-public interface TrafficEdgeMapper { Optional<String> mapExternalLinkToEdge(ExternalTrafficLink link); }
+/** One measured traffic link can span several directed OSM graph edges. */
+public interface TrafficEdgeMapper { List<String> mapExternalLinkToEdges(ExternalTrafficLink link); }
